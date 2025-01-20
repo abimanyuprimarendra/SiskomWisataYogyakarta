@@ -102,8 +102,7 @@ place_id = selected_place['Place_Id']
 st.subheader("Informasi Tempat Wisata")
 col1, col2 = st.columns([1, 2])
 
-with col1:
-    st.image("https://via.placeholder.com/150", width=150)  # Gambar tempat wisata (contoh)
+with col1: 
     st.write("**Nama:**")
     st.write("**Kategori:**")
     st.write("**Harga:**")
