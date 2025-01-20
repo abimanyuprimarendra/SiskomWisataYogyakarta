@@ -6,7 +6,6 @@ import streamlit as st
 import folium
 from streamlit_folium import st_folium
 import re
-import matplotlib.pyplot as plt
 
 # Fungsi untuk memuat data dari Google Drive
 @st.cache_data
@@ -48,25 +47,37 @@ data['Price'] = data['Price'].replace({'Rp ': '', ',': ''}, regex=True).astype(i
 # Format harga setelah normalisasi
 data['Price_Display'] = data['Price'].apply(lambda x: format_rupiah(x))
 
-# Normalisasi harga dan rating
-data['Price_Normalized'] = data['Price'] / data['Price'].max()
-data['Rating_Normalized'] = data['Rating'] / data['Rating'].max()
-
-# Streamlit Sidebar untuk pengaturan bobot similarity
-st.sidebar.header("Pengaturan Bobot Similarity")
-description_weight = st.sidebar.slider("Bobot Deskripsi", 0.0, 1.0, 0.5)
-price_weight = st.sidebar.slider("Bobot Harga", 0.0, 1.0, 0.3)
-rating_weight = st.sidebar.slider("Bobot Rating", 0.0, 1.0, 0.2)
-
 # Perhitungan similarity
 description_sim = cosine_similarity(tfidf_matrix)
-price_sim = cosine_similarity(data[['Price_Normalized']].values.reshape(-1, 1))
-rating_sim = cosine_similarity(data[['Rating_Normalized']].values.reshape(-1, 1))
+price_sim = cosine_similarity(data[['Price']].values.reshape(-1, 1))
+rating_sim = cosine_similarity(data[['Rating']].values.reshape(-1, 1))
 
-# Gabungkan similarity dengan bobot yang dapat disesuaikan
+# Gabungkan similarity tanpa bobot
+description_weight = 1
+price_weight = 1
+rating_weight = 1
+
 final_similarity = (description_weight * description_sim + 
                     price_weight * price_sim + 
                     rating_weight * rating_sim)
+
+# Fungsi untuk merekomendasikan tempat
+def recommend(place_id, top_n=5):
+    try:
+        idx = data[data['Place_Id'] == place_id].index[0]
+    except IndexError:
+        st.error(f"Place ID {place_id} tidak ditemukan dalam data.")
+        st.stop()
+
+    sim_scores = pd.DataFrame(final_similarity[idx], columns=['Score'])
+    sim_scores['Place_Id'] = data['Place_Id']
+    sim_scores = sim_scores.sort_values(by='Score', ascending=False).iloc[1:top_n+1]
+    recommended_data = data[data['Place_Id'].isin(sim_scores['Place_Id'])][['Place_Id', 'Place_Name', 'Category', 'Rating', 'Price_Display']]
+    recommended_data = recommended_data.merge(sim_scores, on='Place_Id')
+    return recommended_data
+
+# Streamlit Interface
+st.title("Sistem Rekomendasi Tempat Wisata Yogyakarta")
 
 # Filter berdasarkan kategori
 categories = data['Category'].unique()
@@ -75,19 +86,7 @@ selected_category = st.selectbox("Pilih kategori:", ["Semua"] + list(categories)
 if selected_category != "Semua":
     data = data[data['Category'] == selected_category]
 
-# Filter berdasarkan rating
-min_rating = st.slider("Minimal Rating", 1, 5, 4)
-data = data[data['Rating'] >= min_rating]
-
-# Filter berdasarkan harga
-min_price, max_price = st.slider("Rentang Harga", int(data['Price'].min()), int(data['Price'].max()), (10000, 500000))
-data = data[(data['Price'] >= min_price) & (data['Price'] <= max_price)]
-
 # Input pengguna
-search_query = st.text_input("Cari Tempat Wisata")
-if search_query:
-    data = data[data['Place_Name'].str.contains(search_query, case=False, na=False)]
-
 place_name = st.selectbox("Pilih tempat wisata:", data['Place_Name'])
 selected_place = data[data['Place_Name'] == place_name].iloc[0]
 place_id = selected_place['Place_Id']
@@ -108,15 +107,11 @@ with col2:
     st.write(selected_place['Rating'])
     st.write(remove_punctuation(selected_place['Description']))
 
-    # Menampilkan gambar (jika tersedia)
-    if 'Image_URL' in selected_place:
-        st.image(selected_place['Image_URL'], caption=f"Foto {selected_place['Place_Name']}")
-
 # Rekomendasi tempat
 st.subheader("Rekomendasi Tempat Wisata Serupa")
+top_n_recommendations = 5  # Jumlah rekomendasi yang ingin ditampilkan
+st.write(f"Rekomendasi tempat wisata serupa untuk {selected_place['Place_Name']}:")
 
-# Pengaturan jumlah rekomendasi
-top_n_recommendations = st.slider("Jumlah Rekomendasi", 1, 10, 5)
 recommendations = recommend(place_id, top_n_recommendations)
 
 # Pilihan opsi untuk rekomendasi
@@ -134,14 +129,6 @@ if selected_recommendation:
     st.write(f"**Rating:** {recommended_place['Rating']}")
     st.write(f"**Total Similarity:** {recommended_place['Score']:.4f}")
 
-# Visualisasi distribusi rating
-st.subheader("Distribusi Rating Tempat Wisata")
-plt.figure(figsize=(8, 6))
-data['Rating'].value_counts().sort_index().plot(kind='bar')
-plt.xlabel('Rating')
-plt.ylabel('Jumlah Tempat Wisata')
-plt.title('Distribusi Rating Tempat Wisata')
-st.pyplot()
 
 # Persiapkan data untuk peta
 if 'Latitude' in data.columns and 'Longitude' in data.columns:
