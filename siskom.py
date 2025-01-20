@@ -97,22 +97,16 @@ with col2:
     st.write(remove_punctuation(selected_place['Description']))
 
 # Rekomendasi tempat
-# Rekomendasi tempat
 st.subheader("Rekomendasi Tempat Wisata Serupa")
 recommendations = recommend(place_id)
 
-# Tampilkan daftar rekomendasi dengan skor similarity
-for i, row in recommendations.iterrows():
-    st.write(f"- **{row['Place_Name']}**")
-    st.write(f"  - Kategori: {row['Category']}")
-    st.write(f"  - Harga: {row['Price_Display']}")
-    st.write(f"  - Rating: {row['Rating']}")
-    st.write(f"  - Total Similarity: {row['Score']:.4f}")
-    st.write("")
+# Pilihan opsi untuk rekomendasi
+selected_recommendation = st.selectbox(
+    "Pilih rekomendasi untuk melihat detail:",
+    recommendations['Place_Name']
+)
 
-# Input untuk memilih detail rekomendasi
-selected_recommendation = st.radio("Pilih rekomendasi untuk melihat detail:", recommendations['Place_Name'])
-
+# Tampilkan detail rekomendasi jika dipilih
 if selected_recommendation:
     recommended_place = recommendations[recommendations['Place_Name'] == selected_recommendation].iloc[0]
     st.write(f"### Detail: {recommended_place['Place_Name']}")
