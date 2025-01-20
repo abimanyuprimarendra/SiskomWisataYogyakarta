@@ -24,7 +24,7 @@ def format_rupiah(angka):
 
 # Fungsi untuk menghilangkan tanda baca dari teks
 def remove_punctuation(text):
-    return re.sub(r'[^\w\s]', '', text)
+    return re.sub(r'[\^\w\s]', '', text)
 
 # Muat dataset
 data = load_data_from_drive()
@@ -52,8 +52,32 @@ description_sim = cosine_similarity(tfidf_matrix)
 price_sim = cosine_similarity(data[['Price']].values.reshape(-1, 1))
 rating_sim = cosine_similarity(data[['Rating']].values.reshape(-1, 1))
 
-# Gabungkan similarity tanpa bobot
-final_similarity = description_sim + price_sim + rating_sim
+# Fungsi untuk normalisasi bobot bobot
+def normalize_weights(description_weight, rating_weight, price_weight):
+    total_weight = description_weight + rating_weight + price_weight
+    if total_weight != 1.0:
+        description_weight /= total_weight
+        rating_weight /= total_weight
+        price_weight /= total_weight
+    return description_weight, rating_weight, price_weight
+
+# Streamlit untuk memilih bobot
+st.sidebar.header("Pengaturan Bobot Similarity")
+
+description_weight = st.sidebar.slider("Bobot Deskripsi", min_value=0.0, max_value=1.0, value=0.4, step=0.05)
+rating_weight = st.sidebar.slider("Bobot Rating", min_value=0.0, max_value=1.0, value=0.3, step=0.05)
+price_weight = st.sidebar.slider("Bobot Harga", min_value=0.0, max_value=1.0, value=0.3, step=0.05)
+
+description_weight, rating_weight, price_weight = normalize_weights(
+    description_weight, rating_weight, price_weight
+)
+
+# Gabungkan similarity dengan bobot
+final_similarity = (
+    description_weight * description_sim +
+    rating_weight * rating_sim +
+    price_weight * price_sim
+)
 
 # Fungsi untuk merekomendasikan tempat
 def recommend(place_id, top_n=5):
@@ -96,11 +120,8 @@ with col2:
     st.write(selected_place['Rating'])
     st.write(remove_punctuation(selected_place['Description']))
 
-# Rekomendasi tempat
-st.subheader("Rekomendasi Tempat Wisata Serupa")
-recommendations = recommend(place_id)
-
 # Pilihan opsi untuk rekomendasi
+recommendations = recommend(place_id)
 selected_recommendation = st.selectbox(
     "Pilih rekomendasi untuk melihat detail:",
     recommendations['Place_Name']
@@ -114,7 +135,6 @@ if selected_recommendation:
     st.write(f"**Harga:** {recommended_place['Price_Display']}")
     st.write(f"**Rating:** {recommended_place['Rating']}")
     st.write(f"**Total Similarity:** {recommended_place['Score']:.4f}")
-
 
 # Persiapkan data untuk peta
 if 'Latitude' in data.columns and 'Longitude' in data.columns:
