@@ -61,7 +61,9 @@ def recommend(place_id, top_n=5):
     sim_scores = pd.DataFrame(final_similarity[idx], columns=['Score'])
     sim_scores['Place_Id'] = data['Place_Id']
     sim_scores = sim_scores.sort_values(by='Score', ascending=False).iloc[1:top_n+1]
-    return data[data['Place_Id'].isin(sim_scores['Place_Id'])][['Place_Id', 'Place_Name', 'Category', 'Rating', 'Price_Display']]
+    recommended_data = data[data['Place_Id'].isin(sim_scores['Place_Id'])][['Place_Id', 'Place_Name', 'Category', 'Rating', 'Price_Display']]
+    recommended_data = recommended_data.merge(sim_scores, on='Place_Id')
+    return recommended_data
 
 # Streamlit Interface
 st.title("Sistem Rekomendasi Tempat Wisata Yogyakarta")
@@ -95,17 +97,30 @@ with col2:
     st.write(remove_punctuation(selected_place['Description']))
 
 # Rekomendasi tempat
+# Rekomendasi tempat
 st.subheader("Rekomendasi Tempat Wisata Serupa")
 recommendations = recommend(place_id)
+
+# Tampilkan daftar rekomendasi dengan skor similarity
+for i, row in recommendations.iterrows():
+    st.write(f"- **{row['Place_Name']}**")
+    st.write(f"  - Kategori: {row['Category']}")
+    st.write(f"  - Harga: {row['Price_Display']}")
+    st.write(f"  - Rating: {row['Rating']}")
+    st.write(f"  - Total Similarity: {row['Score']:.4f}")
+    st.write("")
+
+# Input untuk memilih detail rekomendasi
 selected_recommendation = st.radio("Pilih rekomendasi untuk melihat detail:", recommendations['Place_Name'])
 
-# Tampilkan detail rekomendasi jika dipilih
 if selected_recommendation:
     recommended_place = recommendations[recommendations['Place_Name'] == selected_recommendation].iloc[0]
     st.write(f"### Detail: {recommended_place['Place_Name']}")
     st.write(f"**Kategori:** {recommended_place['Category']}")
     st.write(f"**Harga:** {recommended_place['Price_Display']}")
     st.write(f"**Rating:** {recommended_place['Rating']}")
+    st.write(f"**Total Similarity:** {recommended_place['Score']:.4f}")
+
 
 # Persiapkan data untuk peta
 if 'Latitude' in data.columns and 'Longitude' in data.columns:
