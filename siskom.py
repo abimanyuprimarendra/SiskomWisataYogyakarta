@@ -47,13 +47,17 @@ data['Price'] = data['Price'].replace({'Rp ': '', ',': ''}, regex=True).astype(i
 # Format harga setelah normalisasi
 data['Price_Display'] = data['Price'].apply(lambda x: format_rupiah(x))
 
+# Normalisasi harga dan rating
+data['Price_Normalized'] = data['Price'] / data['Price'].max()
+data['Rating_Normalized'] = data['Rating'] / data['Rating'].max()
+
 # Perhitungan similarity
 description_sim = cosine_similarity(tfidf_matrix)
-price_sim = cosine_similarity(data[['Price']].values.reshape(-1, 1))
-rating_sim = cosine_similarity(data[['Rating']].values.reshape(-1, 1))
+price_sim = cosine_similarity(data[['Price_Normalized']].values.reshape(-1, 1))
+rating_sim = cosine_similarity(data[['Rating_Normalized']].values.reshape(-1, 1))
 
-# Gabungkan similarity tanpa bobot
-final_similarity = description_sim + price_sim + rating_sim
+# Gabungkan similarity dengan bobot
+final_similarity = 0.5 * description_sim + 0.3 * price_sim + 0.2 * rating_sim
 
 # Fungsi untuk merekomendasikan tempat
 def recommend(place_id, top_n=5):
@@ -114,7 +118,6 @@ if selected_recommendation:
     st.write(f"**Harga:** {recommended_place['Price_Display']}")
     st.write(f"**Rating:** {recommended_place['Rating']}")
     st.write(f"**Total Similarity:** {recommended_place['Score']:.4f}")
-
 
 # Persiapkan data untuk peta
 if 'Latitude' in data.columns and 'Longitude' in data.columns:
