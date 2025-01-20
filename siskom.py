@@ -2,6 +2,8 @@ import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import streamlit as st
+import folium
+from streamlit_folium import st_folium
 
 # Fungsi untuk memuat data dari Google Drive
 @st.cache_data
@@ -92,15 +94,58 @@ with col2:
     st.write(selected_place['Rating'])
     st.write(selected_place['Description'])
 
+# Pilih jumlah rekomendasi
+recommendation_count = st.selectbox("Pilih jumlah rekomendasi:", [1, 3, 5])
+
 # Rekomendasi tempat wisata berdasarkan deskripsi yang dipilih
-st.subheader("Rekomendasi Tempat Wisata Serupa")
+st.subheader(f"Rekomendasi {recommendation_count} Tempat Wisata Serupa")
 recommendations = calculate_cosine_similarity_between_places(data, place_id)
 
 # Menampilkan rekomendasi tempat wisata
-for index, recommendation in recommendations.iterrows():
+for index, recommendation in recommendations.head(recommendation_count).iterrows():
     st.write(f"**Nama Tempat:** {recommendation['Place_Name']}")
     st.write(f"**Kategori:** {recommendation['Category']}")
     st.write(f"**Harga:** {recommendation['Price_Display']}")
     st.write(f"**Rating:** {recommendation['Rating']}")
     st.write(f"**Skor Similarity:** {recommendation['Similarity_Score']:.4f}")
     st.write("---")
+
+# Persiapkan data untuk peta
+if 'Latitude' in data.columns and 'Longitude' in data.columns:
+    data = data.rename(columns={'Latitude': 'lat', 'Longitude': 'lon'})
+
+    # Membuat peta dengan folium
+    m = folium.Map(location=[data['lat'].mean(), data['lon'].mean()], zoom_start=12)
+
+    # Menambahkan marker untuk setiap tempat
+    for idx, row in data.iterrows():
+        place_name_cleaned = row['Place_Name']
+        folium.Marker(
+            location=[row['lat'], row['lon']],
+            popup=folium.Popup(
+                f"<b>{place_name_cleaned}</b><br>Harga: {row['Price_Display']}<br>Rating: {row['Rating']}<br>Koordinat: ({row['lat']}, {row['lon']})", 
+                max_width=300
+            ),
+            icon=folium.Icon(color="blue", icon="info-sign")  # Setiap marker menggunakan ikon khusus
+        ).add_to(m)
+
+    # Fokuskan peta ke tempat yang dipilih
+    if 'Latitude' in selected_place and 'Longitude' in selected_place:
+        folium.Marker(
+            location=[selected_place['Latitude'], selected_place['Longitude']],
+            popup=folium.Popup(
+                f"<b>{selected_place['Place_Name']}</b><br>Harga: {selected_place['Price_Display']}<br>Rating: {selected_place['Rating']}<br>Koordinat: ({selected_place['Latitude']}, {selected_place['Longitude']})",
+                max_width=300
+            ),
+            icon=folium.Icon(color="red", icon="info-sign")  # Ikon merah untuk tempat yang dipilih
+        ).add_to(m)
+
+        # Menyelaraskan peta dengan lokasi tempat yang dipilih
+        m.location = [selected_place['Latitude'], selected_place['Longitude']]
+        m.zoom_start = 14  # Fokus lebih dekat pada tempat yang dipilih
+
+    # Menampilkan peta di Streamlit
+    st.subheader("Peta Lokasi Tempat Wisata")
+    st_folium(m, width=700)
+else:
+    st.warning("Dataset tidak memiliki kolom Latitude dan Longitude. Peta tidak dapat ditampilkan.")
