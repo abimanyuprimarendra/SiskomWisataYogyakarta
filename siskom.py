@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import streamlit as st
 import folium
@@ -21,6 +22,10 @@ def load_data_from_drive():
 def format_rupiah(angka):
     return "Rp {:,.0f}".format(angka).replace(",", ".")
 
+# Fungsi untuk menghilangkan tanda baca dari teks
+def remove_punctuation(text):
+    return re.sub(r'[^\w\s]', '', text)
+
 # Muat dataset
 data = load_data_from_drive()
 
@@ -32,6 +37,10 @@ if data.empty:
 # Hilangkan kolom Coordinate jika tidak dibutuhkan
 data = data.drop(columns=['Coordinate'], errors='ignore')
 
+# Preprocessing kolom Description
+tfidf = TfidfVectorizer(stop_words='english')
+tfidf_matrix = tfidf.fit_transform(data['Description'])
+
 # Mengonversi Price menjadi numerik untuk perhitungan
 data['Price'] = data['Price'].replace({'Rp ': '', ',': ''}, regex=True).astype(int)
 
@@ -39,11 +48,12 @@ data['Price'] = data['Price'].replace({'Rp ': '', ',': ''}, regex=True).astype(i
 data['Price_Display'] = data['Price'].apply(lambda x: format_rupiah(x))
 
 # Perhitungan similarity
+description_sim = cosine_similarity(tfidf_matrix)
 price_sim = cosine_similarity(data[['Price']].values.reshape(-1, 1))
 rating_sim = cosine_similarity(data[['Rating']].values.reshape(-1, 1))
 
-# Gabungkan similarity tanpa deskripsi
-final_similarity = price_sim + rating_sim
+# Gabungkan similarity tanpa bobot
+final_similarity = description_sim + price_sim + rating_sim
 
 # Fungsi untuk merekomendasikan tempat
 def recommend(place_id, top_n=5):
@@ -78,11 +88,13 @@ with col1:
     st.write("**Kategori:**")
     st.write("**Harga:**")
     st.write("**Rating:**")
+    st.write("**Deskripsi:**")
 with col2:
     st.write(selected_place['Place_Name'])
     st.write(selected_place['Category'])
     st.write(selected_place['Price_Display'])
     st.write(selected_place['Rating'])
+    st.write(remove_punctuation(selected_place['Description']))
 
 # Rekomendasi tempat
 st.subheader("Rekomendasi Tempat Wisata Serupa")
@@ -103,6 +115,7 @@ if selected_recommendation:
     st.write(f"**Rating:** {recommended_place['Rating']}")
     st.write(f"**Total Similarity:** {recommended_place['Score']:.4f}")
 
+
 # Persiapkan data untuk peta
 if 'Latitude' in data.columns and 'Longitude' in data.columns:
     data = data.rename(columns={'Latitude': 'lat', 'Longitude': 'lon'})
@@ -112,10 +125,11 @@ if 'Latitude' in data.columns and 'Longitude' in data.columns:
 
     # Menambahkan marker untuk setiap tempat
     for idx, row in data.iterrows():
+        place_name_cleaned = remove_punctuation(row['Place_Name'])
         folium.Marker(
             location=[row['lat'], row['lon']],
             popup=folium.Popup(
-                f"<b>{row['Place_Name']}</b><br>Harga: {row['Price_Display']}<br>Rating: {row['Rating']}<br>Koordinat: ({row['lat']}, {row['lon']})", 
+                f"<b>{place_name_cleaned}</b><br>Harga: {row['Price_Display']}<br>Rating: {row['Rating']}<br>Koordinat: ({row['lat']}, {row['lon']})", 
                 max_width=300
             )
         ).add_to(m)
