@@ -4,3 +4,5 @@ streamlit
 folium
 scikit-learn
 streamlit-folium
+matplotlib
+
