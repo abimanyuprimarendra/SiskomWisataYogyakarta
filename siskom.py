@@ -52,7 +52,7 @@ description_sim = cosine_similarity(tfidf_matrix)
 price_sim = cosine_similarity(data[['Price']].values.reshape(-1, 1))
 rating_sim = cosine_similarity(data[['Rating']].values.reshape(-1, 1))
 
-# Gabungkan similarity tanpa bobot
+# Gabungkan similarity dengan bobot
 description_weight = 1
 price_weight = 1
 rating_weight = 1
@@ -101,14 +101,12 @@ place_id = selected_place['Place_Id']
 # Tata letak informasi wisata
 st.subheader("Informasi Tempat Wisata")
 col1, col2 = st.columns([1, 2])
-
-with col1: 
+with col1:
     st.write("**Nama:**")
     st.write("**Kategori:**")
     st.write("**Harga:**")
     st.write("**Rating:**")
     st.write("**Deskripsi:**")
-
 with col2:
     st.write(selected_place['Place_Name'])
     st.write(selected_place['Category'])
