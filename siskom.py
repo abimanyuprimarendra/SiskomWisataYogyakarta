@@ -101,13 +101,17 @@ recommendation_count = st.selectbox("Pilih jumlah rekomendasi:", [1, 3, 5])
 st.subheader(f"Rekomendasi {recommendation_count} Tempat Wisata Serupa")
 recommendations = calculate_cosine_similarity_between_places(data, place_id)
 
-# Menampilkan rekomendasi tempat wisata
-for index, recommendation in recommendations.head(recommendation_count).iterrows():
-    st.write(f"**Nama Tempat:** {recommendation['Place_Name']}")
-    st.write(f"**Kategori:** {recommendation['Category']}")
-    st.write(f"**Harga:** {recommendation['Price_Display']}")
-    st.write(f"**Rating:** {recommendation['Rating']}")
-    st.write(f"**Skor Similarity:** {recommendation['Similarity_Score']:.4f}")
+# Pilih rekomendasi untuk melihat detail
+selected_recommendation_name = st.selectbox("Pilih tempat wisata untuk melihat detail:", recommendations['Place_Name'])
+
+# Menampilkan detail rekomendasi jika dipilih
+if selected_recommendation_name:
+    recommended_place = recommendations[recommendations['Place_Name'] == selected_recommendation_name].iloc[0]
+    st.write(f"### Detail: {recommended_place['Place_Name']}")
+    st.write(f"**Kategori:** {recommended_place['Category']}")
+    st.write(f"**Harga:** {recommended_place['Price_Display']}")
+    st.write(f"**Rating:** {recommended_place['Rating']}")
+    st.write(f"**Skor Similarity:** {recommended_place['Similarity_Score']:.4f}")
     st.write("---")
 
 # Persiapkan data untuk peta
