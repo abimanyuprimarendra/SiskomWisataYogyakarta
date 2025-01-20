@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import streamlit as st
 import folium
@@ -22,10 +21,6 @@ def load_data_from_drive():
 def format_rupiah(angka):
     return "Rp {:,.0f}".format(angka).replace(",", ".")
 
-# Fungsi untuk menghilangkan tanda baca dari teks
-def remove_punctuation(text):
-    return re.sub(r'[\^\w\s]', '', text)
-
 # Muat dataset
 data = load_data_from_drive()
 
@@ -37,10 +32,6 @@ if data.empty:
 # Hilangkan kolom Coordinate jika tidak dibutuhkan
 data = data.drop(columns=['Coordinate'], errors='ignore')
 
-# Preprocessing kolom Description
-tfidf = TfidfVectorizer(stop_words='english')
-tfidf_matrix = tfidf.fit_transform(data['Description'])
-
 # Mengonversi Price menjadi numerik untuk perhitungan
 data['Price'] = data['Price'].replace({'Rp ': '', ',': ''}, regex=True).astype(int)
 
@@ -48,36 +39,11 @@ data['Price'] = data['Price'].replace({'Rp ': '', ',': ''}, regex=True).astype(i
 data['Price_Display'] = data['Price'].apply(lambda x: format_rupiah(x))
 
 # Perhitungan similarity
-description_sim = cosine_similarity(tfidf_matrix)
 price_sim = cosine_similarity(data[['Price']].values.reshape(-1, 1))
 rating_sim = cosine_similarity(data[['Rating']].values.reshape(-1, 1))
 
-# Fungsi untuk normalisasi bobot bobot
-def normalize_weights(description_weight, rating_weight, price_weight):
-    total_weight = description_weight + rating_weight + price_weight
-    if total_weight != 1.0:
-        description_weight /= total_weight
-        rating_weight /= total_weight
-        price_weight /= total_weight
-    return description_weight, rating_weight, price_weight
-
-# Streamlit untuk memilih bobot
-st.sidebar.header("Pengaturan Bobot Similarity")
-
-description_weight = st.sidebar.slider("Bobot Deskripsi", min_value=0.0, max_value=1.0, value=0.4, step=0.05)
-rating_weight = st.sidebar.slider("Bobot Rating", min_value=0.0, max_value=1.0, value=0.3, step=0.05)
-price_weight = st.sidebar.slider("Bobot Harga", min_value=0.0, max_value=1.0, value=0.3, step=0.05)
-
-description_weight, rating_weight, price_weight = normalize_weights(
-    description_weight, rating_weight, price_weight
-)
-
-# Gabungkan similarity dengan bobot
-final_similarity = (
-    description_weight * description_sim +
-    rating_weight * rating_sim +
-    price_weight * price_sim
-)
+# Gabungkan similarity tanpa deskripsi
+final_similarity = price_sim + rating_sim
 
 # Fungsi untuk merekomendasikan tempat
 def recommend(place_id, top_n=5):
@@ -112,16 +78,17 @@ with col1:
     st.write("**Kategori:**")
     st.write("**Harga:**")
     st.write("**Rating:**")
-    st.write("**Deskripsi:**")
 with col2:
     st.write(selected_place['Place_Name'])
     st.write(selected_place['Category'])
     st.write(selected_place['Price_Display'])
     st.write(selected_place['Rating'])
-    st.write(remove_punctuation(selected_place['Description']))
+
+# Rekomendasi tempat
+st.subheader("Rekomendasi Tempat Wisata Serupa")
+recommendations = recommend(place_id)
 
 # Pilihan opsi untuk rekomendasi
-recommendations = recommend(place_id)
 selected_recommendation = st.selectbox(
     "Pilih rekomendasi untuk melihat detail:",
     recommendations['Place_Name']
@@ -145,11 +112,10 @@ if 'Latitude' in data.columns and 'Longitude' in data.columns:
 
     # Menambahkan marker untuk setiap tempat
     for idx, row in data.iterrows():
-        place_name_cleaned = remove_punctuation(row['Place_Name'])
         folium.Marker(
             location=[row['lat'], row['lon']],
             popup=folium.Popup(
-                f"<b>{place_name_cleaned}</b><br>Harga: {row['Price_Display']}<br>Rating: {row['Rating']}<br>Koordinat: ({row['lat']}, {row['lon']})", 
+                f"<b>{row['Place_Name']}</b><br>Harga: {row['Price_Display']}<br>Rating: {row['Rating']}<br>Koordinat: ({row['lat']}, {row['lon']})", 
                 max_width=300
             )
         ).add_to(m)
