@@ -151,7 +151,8 @@ if 'Latitude' in data.columns and 'Longitude' in data.columns:
             popup=folium.Popup(
                 f"<b>{place_name_cleaned}</b><br>Harga: {row['Price_Display']}<br>Rating: {row['Rating']}<br>Koordinat: ({row['lat']}, {row['lon']})", 
                 max_width=300
-            )
+            ),
+            icon=folium.Icon(color="blue", icon="info-sign")  # Setiap marker menggunakan ikon khusus
         ).add_to(m)
 
     # Fokuskan peta ke tempat yang dipilih
@@ -162,7 +163,7 @@ if 'Latitude' in data.columns and 'Longitude' in data.columns:
                 f"<b>{selected_place['Place_Name']}</b><br>Harga: {selected_place['Price_Display']}<br>Rating: {selected_place['Rating']}<br>Koordinat: ({selected_place['Latitude']}, {selected_place['Longitude']})",
                 max_width=300
             ),
-            icon=folium.Icon(color="red", icon="info-sign")
+            icon=folium.Icon(color="red", icon="info-sign")  # Ikon merah untuk tempat yang dipilih
         ).add_to(m)
 
         # Menyelaraskan peta dengan lokasi tempat yang dipilih
