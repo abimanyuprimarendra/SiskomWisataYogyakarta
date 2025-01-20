@@ -77,7 +77,14 @@ def recommend(place_id, top_n=5):
     return recommended_data
 
 # Streamlit Interface
-st.title("Sistem Rekomendasi Tempat Wisata Yogyakarta")
+st.set_page_config(page_title="Sistem Rekomendasi Tempat Wisata Yogyakarta", layout="wide")
+
+# Header dan Deskripsi Aplikasi
+st.markdown(
+    """
+    <h1 style="text-align: center; color: #0072bb;">Sistem Rekomendasi Tempat Wisata Yogyakarta</h1>
+    <p style="text-align: center; font-size: 18px;">Temukan tempat wisata terbaik di Yogyakarta berdasarkan preferensi Anda.</p>
+    """, unsafe_allow_html=True)
 
 # Filter berdasarkan kategori
 categories = data['Category'].unique()
@@ -94,12 +101,15 @@ place_id = selected_place['Place_Id']
 # Tata letak informasi wisata
 st.subheader("Informasi Tempat Wisata")
 col1, col2 = st.columns([1, 2])
+
 with col1:
+    st.image("https://via.placeholder.com/150", width=150)  # Gambar tempat wisata (contoh)
     st.write("**Nama:**")
     st.write("**Kategori:**")
     st.write("**Harga:**")
     st.write("**Rating:**")
     st.write("**Deskripsi:**")
+
 with col2:
     st.write(selected_place['Place_Name'])
     st.write(selected_place['Category'])
@@ -128,7 +138,6 @@ if selected_recommendation:
     st.write(f"**Harga:** {recommended_place['Price_Display']}")
     st.write(f"**Rating:** {recommended_place['Rating']}")
     st.write(f"**Total Similarity:** {recommended_place['Score']:.4f}")
-
 
 # Persiapkan data untuk peta
 if 'Latitude' in data.columns and 'Longitude' in data.columns:
